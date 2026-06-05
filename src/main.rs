@@ -1,4 +1,5 @@
 use {
+    crate::render::PathTracer,
     anyhow::{Context, Ok, Result},
     std::sync::Arc,
     winit::{
@@ -21,6 +22,7 @@ struct App {
     // queue: Option<wgpu::Queue>,
     surface: Option<wgpu::Surface<'static>>,
     surface_config: Option<wgpu::SurfaceConfiguration>,
+    renderer: Option<PathTracer>,
 }
 
 impl ApplicationHandler for App {
@@ -43,6 +45,7 @@ impl ApplicationHandler for App {
         // self.queue = Some(queue);
         self.surface = Some(surface);
         self.surface_config = Some(config);
+        self.renderer = Some(renderer);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -104,7 +107,11 @@ impl ApplicationHandler for App {
                         }
                     };
 
-                // TODO: draw frame
+                let render_target = frame
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+
+                self.renderer.as_ref().unwrap().render_frame(&render_target);
 
                 frame.present();
 
