@@ -1,4 +1,6 @@
 const FLT_MAX: f32 = 3.40282346638528859812e+38;
+const MAX_PATH_LENGTH: u32 = 6u;
+const EPSILON: f32 = 1e-3;
 
 struct Uniforms {
   width: u32,
@@ -57,6 +59,10 @@ fn no_intersection() -> Intersection {
   return Intersection(vec3(0.), -1.);
 }
 
+fn is_intersection_valid(hit: Intersection) -> bool {
+  return hit.t > 0.;
+}
+
 struct Sphere {
   center: vec3f,
   radius: f32,
@@ -78,14 +84,41 @@ fn intersect_sphere(ray: Ray, sphere: Sphere) -> Intersection {
   let mb = -b;
   let t1 = (mb - sqrt_d) * recip_a;
   let t2 = (mb + sqrt_d) * recip_a;
-  let t = select(t2, t1, t1 > 0.);
-  if t <= 0. {
+  let t = select(t2, t1, t1 > EPSILON);
+  if t <= EPSILON {
     return no_intersection();
   }
 
   let p = point_on_ray(ray, t);
   let N = (p - sphere.center) / sphere.radius;
   return Intersection(N, t);
+}
+
+fn intersect_scene(ray: Ray) -> Intersection {
+  var closest_hit = Intersection(vec3(0.), FLT_MAX);
+  for (var i = 0u; i < OBJECT_COUNT; i += 1u) {
+    let sphere = spheres[i];
+    let hit = intersect_sphere(ray, sphere);
+    if hit.t > 0. && hit.t < closest_hit.t {
+      closest_hit = hit;
+    }
+  }
+  if closest_hit.t < FLT_MAX {
+    return closest_hit;
+  }
+  return no_intersection();
+}
+
+struct Scatter {
+  attenuation: vec3f,
+  ray: Ray,
+}
+
+fn scatter(input_ray: Ray, hit: Intersection) -> Scatter {
+  let scattered = reflect(input_ray.direction, hit.normal);
+  let output_ray = Ray(point_on_ray(input_ray, hit.t), scattered);
+  let attenuation = vec3(0.4);
+  return Scatter(attenuation, output_ray);
 }
 
 struct Ray {
@@ -142,22 +175,23 @@ var<private> vertices: TriangleVertices = TriangleVertices(
   uv = (2. * uv - vec2(1.)) * vec2(aspect_ratio, -1.);
 
   let direction = vec3(uv, -focus_distance);
-  let ray = Ray(origin, direction);
-  var closest_hit = Intersection(vec3(0.), FLT_MAX);
-  for (var i = 0u; i < OBJECT_COUNT; i += 1u) {
-    let sphere = spheres[i];
-    // var sphere = spheres[i];
-    // sphere.radius += sin(f32(uniforms.frame_count) * 0.02) * 0.2;
-    let hit = intersect_sphere(ray, sphere);
-    if hit.t > 0. && hit.t < closest_hit.t {
-      closest_hit = hit;
+  var ray = Ray(origin, direction);
+  var throughput = vec3f(1.);
+  var radiance_sample = vec3(0.);
+
+  var path_length = 0u;
+  while path_length < MAX_PATH_LENGTH {
+    let hit = intersect_scene(ray);
+    if !is_intersection_valid(hit) {
+      // If no intersection was found, return the color of the sky and terminate the path.
+      radiance_sample += throughput * sky_color(ray);
+      break;
     }
-  }
-  var radiance_sample: vec3f;
-  if closest_hit.t < FLT_MAX {
-    radiance_sample = vec3(0.5 * closest_hit.normal + vec3(0.5));
-  } else {
-    radiance_sample = sky_color(ray);
+
+    let scattered = scatter(ray, hit);
+    throughput *= scattered.attenuation;
+    ray = scattered.ray;
+    path_length += 1u;
   }
 
   // Fetch the old sum of samples.
