@@ -11,6 +11,7 @@ use {
 };
 
 mod algebra;
+mod camera;
 mod render;
 
 const WIDTH: u32 = 800;

@@ -1,3 +1,7 @@
+use crate::{
+    algebra::Vec3,
+    camera::{Camera, CameraUniforms},
+};
 use bytemuck::{Pod, Zeroable};
 use std::{num::NonZero, sync::Arc};
 
@@ -15,9 +19,11 @@ pub struct PathTracer {
 #[derive(Copy, Clone, Pod, Zeroable)]
 #[repr(C)]
 struct Uniforms {
+    camera: CameraUniforms,
     width: u32,
     height: u32,
     frame_count: u32,
+    _pad: u32,
 }
 
 impl PathTracer {
@@ -30,10 +36,13 @@ impl PathTracer {
         let (pipeline, layout) = create_pipeline(&device, &shader_module);
 
         // Initialize the uniform buffer.
+        let camera = Camera::new(Vec3::new(0., -0.5, 1.));
         let uniforms = Uniforms {
+            camera: *camera.uniforms(),
             width,
             height,
             frame_count: 0,
+            _pad: 0,
         };
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("uniforms"),
