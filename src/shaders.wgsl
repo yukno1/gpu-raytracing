@@ -1,5 +1,5 @@
 const FLT_MAX: f32 = 3.40282346638528859812e+38;
-const MAX_PATH_LENGTH: u32 = 6u;
+const MAX_PATH_LENGTH: u32 = 13u;
 const EPSILON: f32 = 1e-3;
 
 struct Uniforms {
@@ -53,10 +53,11 @@ fn rand_f32() -> f32 {
 struct Intersection {
   normal: vec3f,
   t: f32,
+  color: vec3f,
 }
 
 fn no_intersection() -> Intersection {
-  return Intersection(vec3(0.), -1.);
+  return Intersection(vec3(0.), -1., vec3(0.));
 }
 
 fn is_intersection_valid(hit: Intersection) -> bool {
@@ -66,6 +67,7 @@ fn is_intersection_valid(hit: Intersection) -> bool {
 struct Sphere {
   center: vec3f,
   radius: f32,
+  color: vec3f,
 }
 
 fn intersect_sphere(ray: Ray, sphere: Sphere) -> Intersection {
@@ -91,11 +93,12 @@ fn intersect_sphere(ray: Ray, sphere: Sphere) -> Intersection {
 
   let p = point_on_ray(ray, t);
   let N = (p - sphere.center) / sphere.radius;
-  return Intersection(N, t);
+  return Intersection(N, t, sphere.color);
 }
 
 fn intersect_scene(ray: Ray) -> Intersection {
-  var closest_hit = Intersection(vec3(0.), FLT_MAX);
+  var closest_hit = no_intersection();
+  closest_hit.t = FLT_MAX;
   for (var i = 0u; i < OBJECT_COUNT; i += 1u) {
     let sphere = spheres[i];
     let hit = intersect_sphere(ray, sphere);
@@ -117,7 +120,7 @@ struct Scatter {
 fn scatter(input_ray: Ray, hit: Intersection) -> Scatter {
   let scattered = reflect(input_ray.direction, hit.normal);
   let output_ray = Ray(point_on_ray(input_ray, hit.t), scattered);
-  let attenuation = vec3(0.4);
+  let attenuation = hit.color;
   return Scatter(attenuation, output_ray);
 }
 
@@ -138,8 +141,8 @@ fn sky_color(ray: Ray) -> vec3f {
 const OBJECT_COUNT: u32 = 2;
 alias Spheres = array<Sphere, OBJECT_COUNT>;
 var<private> spheres: Spheres = Spheres(
-  Sphere(/*center*/ vec3(0., 0., -1.), /*radius*/ 0.5),
-  Sphere(/*center*/ vec3(0., -100.5, -1.), /*radius*/ 100.),
+  Sphere(/*center*/ vec3(0., 0., -1.), /*radius*/ 0.5, /*color*/ vec3(0.5, 0.4, 0.)),
+  Sphere(/*center*/ vec3(0., -100.5, -1.), /*radius*/ 100., /*color*/ vec3(0.7, 0.4, 0.6)),
 );
 
 @group(0) @binding(1) var radiance_samples_old: texture_2d<f32>;
@@ -206,6 +209,7 @@ var<private> vertices: TriangleVertices = TriangleVertices(
   let new_sum = radiance_sample + old_sum;
   textureStore(radiance_samples_new, vec2u(pos.xy), vec4(new_sum, 0.));
 
-  // Display the average.
-  return vec4(new_sum / f32(uniforms.frame_count), 1.);
+  // Display the average after gamma correction (gamma = 2.2)
+  let color = new_sum / f32(uniforms.frame_count);
+  return vec4(pow(color, vec3(1. / 2.2)), 1.);
 }

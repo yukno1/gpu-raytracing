@@ -10,6 +10,7 @@ use {
     },
 };
 
+mod algebra;
 mod render;
 
 const WIDTH: u32 = 800;
