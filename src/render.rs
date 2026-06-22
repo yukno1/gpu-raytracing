@@ -17,6 +17,7 @@ pub struct PathTracer {
 struct Uniforms {
     width: u32,
     height: u32,
+    frame_count: u32,
 }
 
 impl PathTracer {
@@ -29,18 +30,17 @@ impl PathTracer {
         let (pipeline, layout) = create_pipeline(&device, &shader_module);
 
         // Initialize the uniform buffer.
-        let uniforms = Uniforms { width, height };
+        let uniforms = Uniforms {
+            width,
+            height,
+            frame_count: 0,
+        };
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("uniforms"),
             size: std::mem::size_of::<Uniforms>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM,
-            mapped_at_creation: true,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
-        uniform_buffer
-            .slice(..)
-            .get_mapped_range_mut()
-            .copy_from_slice(bytemuck::bytes_of(&uniforms));
-        uniform_buffer.unmap();
 
         // Create the path tracer pipeline bind group.
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -66,7 +66,10 @@ impl PathTracer {
         }
     }
 
-    pub fn render_frame(&self, target: &wgpu::TextureView) {
+    pub fn render_frame(&mut self, target: &wgpu::TextureView) {
+        self.uniforms.frame_count += 1;
+        self.queue
+            .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&self.uniforms));
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {

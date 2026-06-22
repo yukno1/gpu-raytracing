@@ -38,7 +38,7 @@ impl ApplicationHandler for App {
                 .expect("Failed to connect to GPU")
         });
 
-        let renderer = render::PathTracer::new(device, queue, WIDTH, HEIGHT);
+        let mut renderer = render::PathTracer::new(device, queue, WIDTH, HEIGHT);
 
         self.window = Some(window);
         // self.device = Some(device);
@@ -111,7 +111,7 @@ impl ApplicationHandler for App {
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
-                self.renderer.as_ref().unwrap().render_frame(&render_target);
+                self.renderer.as_mut().unwrap().render_frame(&render_target);
 
                 frame.present();
 
