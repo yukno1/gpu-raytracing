@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.102"
+bytemuck = "1.25.0"
 pollster = "0.4.0"
 wgpu = {version ="29.0.3", default-features = false, features = [
     "dx12",    # Windows 现代图形 API，性能最佳

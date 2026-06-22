@@ -12,6 +12,13 @@ var<private> vertices: TriangleVertices = TriangleVertices(
   return vec4f(vertices[vid], 0.0, 1.0);
 }
 
-@fragment fn path_tracer_fs() -> @location(0) vec4f {
-  return vec4f(1.0, 0.0, 0.0, 1.0);
+struct Uniforms {
+  width: u32,
+  height: u32,
+}
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+@fragment fn path_tracer_fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
+  let color = pos.xy / vec2f(f32(uniforms.width - 1u), f32(uniforms.height - 1u));
+  return vec4f(color, 0.0, 1.0);
 }

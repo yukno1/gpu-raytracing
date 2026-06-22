@@ -38,7 +38,7 @@ impl ApplicationHandler for App {
                 .expect("Failed to connect to GPU")
         });
 
-        let renderer = render::PathTracer::new(device, queue);
+        let renderer = render::PathTracer::new(device, queue, WIDTH, HEIGHT);
 
         self.window = Some(window);
         // self.device = Some(device);
